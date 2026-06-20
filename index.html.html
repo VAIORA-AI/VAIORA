@@ -1,0 +1,2093 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vaiora - Construction ERP Suite</title>
+    
+    <!-- External CSS & Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <!-- Tailwind Configuration for Custom Theme -->
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        primary: '#0b57d0',
+                        'primary-hover': '#0a45b4',
+                        surface: '#ffffff',
+                        'surface-container': '#f0f4f9',
+                        'surface-dark': '#0f172a',
+                        'container-dark': '#1e293b'
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Custom scrollbar styling for a cleaner look */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .dark ::-webkit-scrollbar-thumb {
+            background: #475569;
+        }
+        /* Active department indicator styling */
+        .module-active {
+            background-color: rgba(11, 87, 208, 0.1);
+            color: #0b57d0;
+            font-weight: 600;
+            border-left: 3px solid #0b57d0;
+        }
+        .dark .module-active {
+            background-color: rgba(148, 163, 184, 0.15);
+            color: #38bdf8;
+            border-left: 3px solid #38bdf8;
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] text-[#1e293b] dark:bg-[#0f172a] dark:text-[#f8fafc] h-screen overflow-hidden flex flex-col transition-colors duration-200">
+
+    <script>
+        // Central Reactive State holding all simulated database tables
+        window.erpState = {
+            activeDept: 'Sales',
+            activeModule: 'Enquiries',
+            
+            // Notification queue (Custom replacement for alerts)
+            notifications: [],
+
+            // --- SALES MODULE DATA ---
+            enquiries: [
+                { id: 'ENQ-2026-001', date: '2026-06-15', client: 'Greenwood Developers', project: 'Villa Phase 4', contact: '9876543210', value: 4500000, status: 'Warm' },
+                { id: 'ENQ-2026-002', date: '2026-06-18', client: 'Apex Infra Structures', project: 'Metro Commercial Plaza', contact: '8765432109', value: 12500000, status: 'Hot' },
+                { id: 'ENQ-2026-003', date: '2026-06-20', client: 'Srinivasan Builders', project: 'Vandalur Residential', contact: '7654321098', value: 3200000, status: 'Cold' }
+            ],
+            quotations: [
+                { id: 'QT-2026-101', date: '2026-06-16', enquiryId: 'ENQ-2026-001', value: 4350000, taxRate: 18, status: 'Pending Review' },
+                { id: 'QT-2026-102', date: '2026-06-19', enquiryId: 'ENQ-2026-002', value: 12100000, taxRate: 18, status: 'Approved' }
+            ],
+            contracts: [
+                { id: 'CTR-2026-501', signedDate: '2026-06-20', client: 'Apex Infra Structures', project: 'Metro Commercial Plaza', poNo: 'PO-99122', value: 12100000, advanceReceived: 2000000, status: 'Execution Started' }
+            ],
+
+            // --- ACCOUNTS MODULE DATA ---
+            invoices: [
+                { id: 'INV-2026-301', date: '2026-06-20', contractId: 'CTR-2026-501', taxable: 1500000, cgst: 135000, sgst: 135000, total: 1770000, status: 'Unpaid' }
+            ],
+            vouchers: [
+                { id: 'VCH-088', date: '2026-06-19', payTo: 'Tirupati Diesel Depot', type: 'Bank Payment', category: 'Fuel / Diesel', amount: 45000, status: 'Approved' },
+                { id: 'VCH-089', date: '2026-06-21', payTo: 'Velan Brick Works', type: 'Cash Payment', category: 'Material Cost (Direct)', amount: 25000, status: 'Pending Approval' }
+            ],
+            pettyCash: [
+                { id: 'PC-401', date: '2026-06-20', detail: 'Supervisor local travel allowance', amount: 850, category: 'Conveyance' },
+                { id: 'PC-402', date: '2026-06-21', detail: 'Site labour snacks & tea expenses', amount: 1200, category: 'Labour Welfare' }
+            ],
+            taxes: {
+                inputTaxCredit: 245000,
+                outputTaxCollected: 270000,
+                tdsReceivable: 45000,
+                netGstPayable: 25000
+            },
+            bills: [
+                { id: 'BIL-901', type: 'Debit Bill', date: '2026-06-17', entity: 'Client: Apex Infra', reason: 'Backcharge for crane rental', amount: 18000, status: 'Settled' },
+                { id: 'BIL-902', type: 'Credit Bill', date: '2026-06-20', entity: 'Vendor: Senthil Electricals', reason: 'Bulk discount rebate on wires', amount: 12500, status: 'Pending' }
+            ],
+            soa: {
+                clientName: 'Apex Infra Structures',
+                openingBalance: 0,
+                transactions: [
+                    { date: '2026-06-20', desc: 'Contract Value Committed', debit: 12100000, credit: 0, balance: 12100000 },
+                    { date: '2026-06-20', desc: 'Advance Payment Received', debit: 0, credit: 2000000, balance: 10100000 },
+                    { date: '2026-06-21', desc: 'Progress Progressive Invoice INV-301 Raised', debit: 1770000, credit: 0, balance: 11870000 }
+                ]
+            },
+
+            // --- OPERATIONS DATA ---
+            bom: [
+                { villa: 'Villa-01', work: 'Electrical Conduit', item: '25mm PVC Conduit Pipe', estimate: 800, actual: 780, unit: 'Rmt' },
+                { villa: 'Villa-01', work: 'Plumbing Concealed', item: '1-inch CPVC Supply Pipe', estimate: 450, actual: 480, unit: 'Rmt' },
+                { villa: 'Villa-02', work: 'Electrical Conduit', item: '25mm PVC Conduit Pipe', estimate: 800, actual: 520, unit: 'Rmt' },
+                { villa: 'Villa-02', work: 'Plumbing Concealed', item: '1-inch CPVC Supply Pipe', estimate: 450, actual: 390, unit: 'Rmt' }
+            ],
+            mpUtilized: [
+                { id: 'MP-01', date: '2026-06-21', machine: 'Chasing/Grooving Wall Machine', runningHours: 6.5, idleHours: 1.5, reason: 'No power grid' },
+                { id: 'MP-02', date: '2026-06-21', machine: 'Concrete Core Cutting Machine', runningHours: 4.0, idleHours: 4.0, reason: 'Slab layout marker delayed' }
+            ],
+            materialUtilized: [
+                { id: 'MU-901', date: '2026-06-21', item: '1.5 sqmm FR Copper Wire (Coils)', qty: 12, unit: 'Coils', task: 'Wiring Phase Villa-01' },
+                { id: 'MU-902', date: '2026-06-21', item: 'Angle Valves (Brass)', qty: 8, unit: 'Nos', task: 'Plumbing concealed Villa-01' }
+            ],
+            progressFilter: 'Day', // Day, Week, Month
+
+            // --- HR & PAYROLL DATA ---
+            employees: [
+                { id: 'EMP-001', name: 'Saravanan M.', role: 'Senior Electrician', rate: 900 },
+                { id: 'EMP-002', name: 'Kathirvel K.', role: 'Plumbing Mason', rate: 850 },
+                { id: 'EMP-003', name: 'Murugan P.', role: 'Site Assistant / Helper', rate: 550 },
+                { id: 'EMP-004', name: 'Ramachandran T.', role: 'Site Supervisor', rate: 1200 }
+            ],
+            attendance: {
+                '2026-06-21': {
+                    'EMP-001': true,
+                    'EMP-002': true,
+                    'EMP-003': false,
+                    'EMP-004': true
+                }
+            },
+            currentAttendanceDate: '2026-06-21',
+
+            // --- ADMIN ACCESS FLOW CONTROL ---
+            accessFlow: {
+                'Super Admin': { sales: true, accounts: true, operations: true, hr: true },
+                'Site Supervisor': { sales: false, accounts: false, operations: true, hr: true },
+                'Project Engineer': { sales: true, accounts: false, operations: true, hr: false },
+                'Site Accountant': { sales: true, accounts: true, operations: false, hr: true }
+            }
+        };
+
+        // Custom notification helper
+        function triggerToast(message, type = 'success') {
+            const toast = document.createElement('div');
+            toast.className = `fixed bottom-4 right-4 z-50 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-white font-medium transition-all duration-300 transform translate-y-10 opacity-0 ${type === 'success' ? 'bg-emerald-600' : 'bg-rose-600'}`;
+            toast.innerHTML = `<span class="material-icons">${type === 'success' ? 'check_circle' : 'error'}</span><span>${message}</span>`;
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.classList.remove('translate-y-10', 'opacity-0');
+            }, 10);
+            setTimeout(() => {
+                toast.classList.add('translate-y-10', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+
+    <!-- Top Nav Header Bar -->
+    <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-6 z-10 shrink-0">
+        <div class="flex items-center gap-3">
+            <div class="bg-primary p-1.5 rounded-lg text-white flex items-center justify-center">
+                <span class="material-icons text-xl">business_center</span>
+            </div>
+            <div>
+                <h1 class="text-md font-bold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                    VAIORA <span class="text-xs bg-primary/10 text-primary dark:text-sky-400 font-semibold px-2 py-0.5 rounded">CONSTRUCTION ERP</span>
+                </h1>
+            </div>
+        </div>
+        
+        <!-- Live System Badges -->
+        <div class="flex items-center gap-4">
+            <div class="hidden sm:flex items-center gap-2 text-xs bg-slate-100 dark:bg-slate-800 px-3 py-1.5 rounded-full">
+                <span class="h-2 w-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                <span class="font-medium text-slate-600 dark:text-slate-300">Site Status: Active</span>
+            </div>
+            
+            <!-- Dark Mode Toggle Button -->
+            <button onclick="toggleDarkMode()" class="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400">
+                <span class="material-icons text-xl" id="dark-mode-icon">light_mode</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Master Screen Area: Sidebar and RHS Working Screen -->
+    <main class="flex-grow flex overflow-hidden">
+        
+        <!-- Left Sidebar: Departments & Child Sub-modules nested explicitly -->
+        <aside class="w-72 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col justify-between shrink-0 overflow-y-auto">
+            <div class="p-4 space-y-6">
+                
+                <!-- SALES DEPARTMENT -->
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase px-3 block mb-2">Sales Department</span>
+                    <ul class="space-y-1">
+                        <li>
+                            <button onclick="changeActiveModule('Sales', 'Enquiries')" id="menu-Sales-Enquiries" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">contact_mail</span>
+                                <span>Enquiries</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Sales', 'Quotation')" id="menu-Sales-Quotation" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">request_quote</span>
+                                <span>Quotations</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Sales', 'PO_Contract')" id="menu-Sales-PO_Contract" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">history_edu</span>
+                                <span>PO & Agreements</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ACCOUNTS DEPARTMENT -->
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase px-3 block mb-2">Accounts & Finance</span>
+                    <ul class="space-y-1">
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'Invoice')" id="menu-Accounts-Invoice" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">receipt</span>
+                                <span>Progress Invoices</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'Vouchers')" id="menu-Accounts-Vouchers" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">confirmation_number</span>
+                                <span>Site Vouchers</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'Pettycash')" id="menu-Accounts-Pettycash" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">payments</span>
+                                <span>Pettycash & Expenses</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'Tax')" id="menu-Accounts-Tax" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">percent</span>
+                                <span>Tax Calculations (GST)</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'CreditDebit')" id="menu-Accounts-CreditDebit" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">balance</span>
+                                <span>Credit & Debit Bills</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Accounts', 'SOA')" id="menu-Accounts-SOA" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">account_balance_wallet</span>
+                                <span>Statement of Account (SOA)</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- OPERATIONS DEPARTMENT -->
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase px-3 block mb-2">Operations Dept</span>
+                    <ul class="space-y-1">
+                        <li>
+                            <button onclick="changeActiveModule('Operations', 'BOM')" id="menu-Operations-BOM" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">summarize</span>
+                                <span>BOM Daily Updates</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Operations', 'MPUtilized')" id="menu-Operations-MPUtilized" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">construction</span>
+                                <span>MP / Machinery Used</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Operations', 'MaterialUtilized')" id="menu-Operations-MaterialUtilized" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">inventory</span>
+                                <span>Material Utilized</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('Operations', 'ProgressChart')" id="menu-Operations-ProgressChart" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">analytics</span>
+                                <span>BOM Progress Analytics</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- HR & PAYROLL -->
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase px-3 block mb-2">HR & Payroll</span>
+                    <ul class="space-y-1">
+                        <li>
+                            <button onclick="changeActiveModule('HR', 'Employees')" id="menu-HR-Employees" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">badge</span>
+                                <span>Employee Master</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('HR', 'Attendance')" id="menu-HR-Attendance" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">edit_calendar</span>
+                                <span>Daily Attendance</span>
+                            </button>
+                        </li>
+                        <li>
+                            <button onclick="changeActiveModule('HR', 'Payroll')" id="menu-HR-Payroll" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">monetization_on</span>
+                                <span>Site Payroll</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+                <!-- ADMIN CONTROL -->
+                <div>
+                    <span class="text-xs font-bold text-slate-400 dark:text-slate-500 tracking-wider uppercase px-3 block mb-2">System Admin</span>
+                    <ul class="space-y-1">
+                        <li>
+                            <button onclick="changeActiveModule('Admin', 'StaffAccess')" id="menu-Admin-StaffAccess" class="w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left">
+                                <span class="material-icons text-lg">gavel</span>
+                                <span>Staff Access Matrix</span>
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+
+            </div>
+            
+            <!-- Quick footer profile info -->
+            <div class="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/40">
+                <div class="flex items-center gap-3">
+                    <div class="h-9 w-9 rounded-full bg-primary/20 text-primary dark:text-sky-400 flex items-center justify-center font-bold">
+                        VA
+                    </div>
+                    <div>
+                        <p class="text-xs font-bold text-slate-700 dark:text-slate-200">Vaiora Admin</p>
+                        <p class="text-[10px] text-slate-400">Super User Privileges</p>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Right Side: Active Workspace Section -->
+        <section class="flex-grow flex flex-col overflow-hidden p-6" id="workspace-container">
+            <!-- Active Submodule Title Bar -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 shrink-0">
+                <div>
+                    <div class="flex items-center gap-2 text-xs font-semibold text-primary dark:text-sky-400 uppercase tracking-wider mb-1" id="workspace-breadcrumb">
+                        Sales Department
+                    </div>
+                    <h2 class="text-2xl font-bold text-slate-800 dark:text-slate-100" id="workspace-title">
+                        Enquiries Track
+                    </h2>
+                </div>
+                <div id="workspace-actions" class="flex items-center gap-2">
+                    <!-- Dynamic action buttons rendered here -->
+                </div>
+            </div>
+
+            <!-- Scrollable workspace body where components live -->
+            <div class="flex-grow overflow-y-auto pr-2 pb-8" id="workspace-content">
+                <!-- React/Vanilla dynamic rendered markup will go here -->
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Application Logic Script -->
+    <script>
+        // Core View Switcher function
+        function changeActiveModule(dept, module) {
+            window.erpState.activeDept = dept;
+            window.erpState.activeModule = module;
+            
+            // Re-apply left sidebar styles
+            document.querySelectorAll('aside button').forEach(btn => {
+                btn.className = "w-full flex items-center gap-3 px-3 py-2 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 rounded-lg transition-all text-left";
+            });
+            const activeBtn = document.getElementById(`menu-${dept}-${module}`);
+            if (activeBtn) {
+                activeBtn.className += " module-active";
+            }
+
+            // Update breadcrumb and title on working screen
+            document.getElementById('workspace-breadcrumb').innerText = `${dept} Department`;
+            document.getElementById('workspace-title').innerText = formatTitle(module);
+
+            // Render matching view
+            renderActiveModule();
+        }
+
+        // Title formatter
+        function formatTitle(name) {
+            if (name === 'PO_Contract') return 'PO & Contract Agreements';
+            if (name === 'MPUtilized') return 'MP / Machinery Run Logs';
+            if (name === 'MaterialUtilized') return 'Daily Material Issued';
+            if (name === 'ProgressChart') return 'BOM vs Consumption Progress';
+            if (name === 'StaffAccess') return 'Staff Security Access Matrix';
+            return name;
+        }
+
+        // Trigger switch logic
+        function toggleDarkMode() {
+            const html = document.documentElement;
+            const icon = document.getElementById('dark-mode-icon');
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.innerText = 'dark_mode';
+            } else {
+                html.classList.add('dark');
+                icon.innerText = 'light_mode';
+            }
+        }
+
+        // Master Router to render specific RHS templates
+        function renderActiveModule() {
+            const content = document.getElementById('workspace-content');
+            const actions = document.getElementById('workspace-actions');
+            
+            // Reset both containers
+            content.innerHTML = '';
+            actions.innerHTML = '';
+
+            const module = window.erpState.activeModule;
+
+            if (module === 'Enquiries') {
+                renderEnquiries(content, actions);
+            } else if (module === 'Quotation') {
+                renderQuotations(content, actions);
+            } else if (module === 'PO_Contract') {
+                renderContracts(content, actions);
+            } else if (module === 'Invoice') {
+                renderInvoices(content, actions);
+            } else if (module === 'Vouchers') {
+                renderVouchers(content, actions);
+            } else if (module === 'Pettycash') {
+                renderPettyCash(content, actions);
+            } else if (module === 'Tax') {
+                renderTax(content, actions);
+            } else if (module === 'CreditDebit') {
+                renderCreditDebit(content, actions);
+            } else if (module === 'SOA') {
+                renderSOA(content, actions);
+            } else if (module === 'BOM') {
+                renderBOM(content, actions);
+            } else if (module === 'MPUtilized') {
+                renderMPUtilized(content, actions);
+            } else if (module === 'MaterialUtilized') {
+                renderMaterialUtilized(content, actions);
+            } else if (module === 'ProgressChart') {
+                renderProgressChart(content, actions);
+            } else if (module === 'Employees') {
+                renderEmployees(content, actions);
+            } else if (module === 'Attendance') {
+                renderAttendance(content, actions);
+            } else if (module === 'Payroll') {
+                renderPayroll(content, actions);
+            } else if (module === 'StaffAccess') {
+                renderStaffAccess(content, actions);
+            }
+        }
+
+        // --- SUBMODULE RENDER FUNCTIONS ---
+
+        // 1. SALES - ENQUIRIES
+        function renderEnquiries(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openEnquiryModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">add</span> Add New Enquiry
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.enquiries.forEach((enq, index) => {
+                let badgeColor = enq.status === 'Hot' ? 'bg-rose-100 text-rose-800' : enq.status === 'Warm' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-800';
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${enq.id}</td>
+                        <td class="p-4 text-sm font-medium">${enq.client}</td>
+                        <td class="p-4 text-sm">${enq.project}</td>
+                        <td class="p-4 text-sm">${enq.contact}</td>
+                        <td class="p-4 text-sm font-bold">₹ ${enq.value.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-xs"><span class="px-2 py-1 rounded-full font-semibold ${badgeColor}">${enq.status}</span></td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Ref ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Client / Contractor</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Project / Villa Location</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Phone / Contact</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Est. Value</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Lead Temperature</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openEnquiryModal() {
+            // Generate simple inline modal inside workspace container
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "enquiry-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Add New Site Enquiry</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Client Name</label>
+                            <input id="new-enq-client" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., L&T Infra">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Project Name / Scope</label>
+                            <input id="new-enq-project" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Villa No 12 Conduit Piping">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Contact Number</label>
+                                <input id="new-enq-contact" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 9944...">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Temp</label>
+                                <select id="new-enq-temp" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                    <option>Hot</option>
+                                    <option>Warm</option>
+                                    <option>Cold</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Project Valuation Budget (INR)</label>
+                            <input id="new-enq-value" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 1200000">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('enquiry-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewEnquiry()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Submit Lead</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewEnquiry() {
+            const client = document.getElementById('new-enq-client').value;
+            const project = document.getElementById('new-enq-project').value;
+            const contact = document.getElementById('new-enq-contact').value;
+            const status = document.getElementById('new-enq-temp').value;
+            const value = parseFloat(document.getElementById('new-enq-value').value || 0);
+
+            if(!client || !project) {
+                triggerToast('Please fill essential details!', 'error');
+                return;
+            }
+
+            const newId = `ENQ-2026-${String(window.erpState.enquiries.length + 1).padStart(3, '0')}`;
+            const date = new Date().toISOString().split('T')[0];
+            
+            window.erpState.enquiries.push({ id: newId, date, client, project, contact, value, status });
+            document.getElementById('enquiry-modal').remove();
+            triggerToast('New Enquiry Logged Successfully');
+            renderActiveModule();
+        }
+
+        // 2. SALES - QUOTATIONS
+        function renderQuotations(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openQuotationModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">add_task</span> Generate Quote
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.quotations.forEach((q) => {
+                const enqRef = window.erpState.enquiries.find(e => e.id === q.enquiryId);
+                const clientLabel = enqRef ? enqRef.client : 'N/A';
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${q.id}</td>
+                        <td class="p-4 text-xs text-primary font-medium cursor-pointer underline">${q.enquiryId}</td>
+                        <td class="p-4 text-sm font-medium">${clientLabel}</td>
+                        <td class="p-4 text-sm font-bold">₹ ${q.value.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm">${q.taxRate}% GST</td>
+                        <td class="p-4 text-xs">
+                            <span class="px-2 py-1 rounded-full font-semibold ${q.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}">
+                                ${q.status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Quote ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Enquiry Ref</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Client / Entity</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Estimated Proposal Valuation</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Tax Breakdown</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openQuotationModal() {
+            let options = '';
+            window.erpState.enquiries.forEach(e => {
+                options += `<option value="${e.id}">${e.id} - ${e.client} (${e.project})</option>`;
+            });
+
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "quote-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Generate Contractor Quotation</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Select Active Enquiry Lead</label>
+                            <select id="new-quote-enq" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                ${options}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Draft Quote Value (Excluding Tax)</label>
+                            <input id="new-quote-value" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 4000000">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Standard GST Rate (%)</label>
+                            <input id="new-quote-tax" type="number" value="18" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('quote-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewQuotation()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Draft Quotation</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewQuotation() {
+            const enqId = document.getElementById('new-quote-enq').value;
+            const val = parseFloat(document.getElementById('new-quote-value').value || 0);
+            const tax = parseInt(document.getElementById('new-quote-tax').value || 18);
+
+            if(!enqId || val <= 0) {
+                triggerToast('Please input valid quotation amount!', 'error');
+                return;
+            }
+
+            const newId = `QT-2026-${String(window.erpState.quotations.length + 1).padStart(3, '0')}`;
+            window.erpState.quotations.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                enquiryId: enqId,
+                value: val,
+                taxRate: tax,
+                status: 'Pending Review'
+            });
+
+            document.getElementById('quote-modal').remove();
+            triggerToast('Quotation Proposal drafted.');
+            renderActiveModule();
+        }
+
+        // 3. SALES - PO & CONTRACT AGREEMENTS
+        function renderContracts(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openContractModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">assignment_turned_in</span> Sign Contract / PO
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.contracts.forEach((c) => {
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${c.id}</td>
+                        <td class="p-4 text-xs font-bold bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded">${c.poNo}</td>
+                        <td class="p-4 text-sm font-medium">${c.client}</td>
+                        <td class="p-4 text-sm">${c.project}</td>
+                        <td class="p-4 text-sm font-bold">₹ ${c.value.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm text-emerald-600 font-bold">₹ ${c.advanceReceived.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-xs"><span class="px-2 py-1 rounded bg-sky-100 text-sky-800 font-bold uppercase">${c.status}</span></td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Contract Agreement ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">PO Reference #</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Client / Entity</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Project / Villa Reference</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Contract Commitment</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Advance Settled</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Work Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openContractModal() {
+            let quoteOptions = '';
+            window.erpState.quotations.forEach(q => {
+                if(q.status === 'Approved') {
+                    quoteOptions += `<option value="${q.id}">${q.id} - ₹ ${q.value.toLocaleString('en-IN')}</option>`;
+                }
+            });
+
+            if(!quoteOptions) {
+                quoteOptions = `<option disabled>No Approved Quotes available. Approve a quotation first!</option>`;
+            }
+
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "contract-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Execute Client Contract Agreement</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Select Approved Quotation Proposal</label>
+                            <select id="new-con-quote" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                ${quoteOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Client PO / Work Order Reference No.</label>
+                            <input id="new-con-po" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., PO-883311">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Advance Amount Received from Client (INR)</label>
+                            <input id="new-con-advance" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 500000">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('contract-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewContract()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Verify & Deploy</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewContract() {
+            const quoteId = document.getElementById('new-con-quote').value;
+            const poNo = document.getElementById('new-con-po').value;
+            const advance = parseFloat(document.getElementById('new-con-advance').value || 0);
+
+            if(!quoteId || !poNo) {
+                triggerToast('Missing quote mapping or PO reference!', 'error');
+                return;
+            }
+
+            const quoteObj = window.erpState.quotations.find(q => q.id === quoteId);
+            const enqObj = window.erpState.enquiries.find(e => e.id === quoteObj.enquiryId);
+
+            const newId = `CTR-2026-${String(window.erpState.contracts.length + 501).padStart(3, '0')}`;
+            window.erpState.contracts.push({
+                id: newId,
+                signedDate: new Date().toISOString().split('T')[0],
+                client: enqObj.client,
+                project: enqObj.project,
+                poNo: poNo,
+                value: quoteObj.value,
+                advanceReceived: advance,
+                status: 'Execution Started'
+            });
+
+            document.getElementById('contract-modal').remove();
+            triggerToast('PO Signoff complete. Project moved to active status.');
+            renderActiveModule();
+        }
+
+        // 4. ACCOUNTS - INVOICES
+        function renderInvoices(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openInvoiceModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">post_add</span> Raise Progress Claim Invoice
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.invoices.forEach((inv) => {
+                const con = window.erpState.contracts.find(c => c.id === inv.contractId);
+                const client = con ? con.client : 'Unknown Client';
+                
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${inv.id}</td>
+                        <td class="p-4 text-xs font-bold text-slate-600 dark:text-slate-400 bg-slate-50 dark:bg-slate-800 rounded">${inv.contractId}</td>
+                        <td class="p-4 text-sm font-medium">${client}</td>
+                        <td class="p-4 text-sm">₹ ${inv.taxable.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm text-rose-500">₹ ${inv.cgst.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm text-rose-500">₹ ${inv.sgst.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm font-bold text-slate-800 dark:text-slate-100">₹ ${inv.total.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-xs">
+                            <button onclick="toggleInvoicePaid('${inv.id}')" class="px-3 py-1 rounded font-bold uppercase ${inv.status === 'Paid' ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800 hover:bg-rose-200'}">
+                                ${inv.status}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Invoice Ref</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Contract Target</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Client / Contractor</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Taxable Value</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">CGST (9%)</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">SGST (9%)</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Gross Total</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Status (Click to Switch)</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function toggleInvoicePaid(id) {
+            const inv = window.erpState.invoices.find(i => i.id === id);
+            if(inv) {
+                inv.status = inv.status === 'Paid' ? 'Unpaid' : 'Paid';
+                triggerToast(`Invoice status updated to ${inv.status}`);
+                renderActiveModule();
+            }
+        }
+
+        function openInvoiceModal() {
+            let conOptions = '';
+            window.erpState.contracts.forEach(c => {
+                conOptions += `<option value="${c.id}">${c.id} - ${c.client} (${c.project})</option>`;
+            });
+
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "invoice-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Raise Progress Progressive Claim</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Target Project Contract</label>
+                            <select id="new-inv-con" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                ${conOptions}
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Claim Valuation (Taxable Amt)</label>
+                            <input id="new-inv-taxable" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 1000000">
+                        </div>
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-lg border border-dashed dark:border-slate-700 text-xs text-slate-400 space-y-1">
+                            <p class="font-bold text-slate-500">Tax Breakdown Indicator:</p>
+                            <p>• CGST: 9% calculated automatically</p>
+                            <p>• SGST: 9% calculated automatically</p>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('invoice-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewInvoice()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Generate Invoice</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // 5. ACCOUNTS - VOUCHERS
+        function submitNewInvoice() {
+            const contractId = document.getElementById('new-inv-con').value;
+            const taxable = parseFloat(document.getElementById('new-inv-taxable').value || 0);
+
+            if(!contractId || taxable <= 0) {
+                triggerToast('Please provide valid progressive value!', 'error');
+                return;
+            }
+
+            const cgst = taxable * 0.09;
+            const sgst = taxable * 0.09;
+            const total = taxable + cgst + sgst;
+
+            const newId = `INV-2026-${String(window.erpState.invoices.length + 301).padStart(3, '0')}`;
+            window.erpState.invoices.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                contractId,
+                taxable,
+                cgst,
+                sgst,
+                total,
+                status: 'Unpaid'
+            });
+
+            document.getElementById('invoice-modal').remove();
+            triggerToast('Progressive tax invoice successfully posted.');
+            renderActiveModule();
+        }
+
+        function renderVouchers(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openVoucherModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">confirmation_number</span> Issue / Create Voucher
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.vouchers.forEach((v) => {
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${v.id}</td>
+                        <td class="p-4 text-sm font-medium">${v.payTo}</td>
+                        <td class="p-4 text-xs font-semibold text-slate-600 dark:text-slate-300">${v.type}</td>
+                        <td class="p-4 text-sm">${v.category}</td>
+                        <td class="p-4 text-sm font-bold text-rose-500">₹ ${v.amount.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-xs">
+                            <button onclick="approveVoucher('${v.id}')" class="px-2 py-1 rounded font-bold ${v.status === 'Approved' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800 hover:bg-amber-200'}">
+                                ${v.status}
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Voucher ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Paid / Settled To</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Voucher Instrument</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Cost Center / Category</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Debit Amount</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Approval Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function approveVoucher(id) {
+            const v = window.erpState.vouchers.find(item => item.id === id);
+            if(v) {
+                v.status = 'Approved';
+                triggerToast('Voucher approved and posted to general ledger.');
+                renderActiveModule();
+            }
+        }
+
+        function openVoucherModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "voucher-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Create Site Cash / Bank Voucher</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Payable To (Vendor/Labour Group)</label>
+                            <input id="v-payto" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Senthil Cable Suppliers">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Payment Type</label>
+                                <select id="v-type" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                    <option>Bank Payment</option>
+                                    <option>Cash Payment</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Category</label>
+                                <input id="v-category" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Consumables">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Voucher Valuation (Excl Tax)</label>
+                            <input id="v-amount" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 15000">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('voucher-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewVoucher()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Issue Voucher</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewVoucher() {
+            const payTo = document.getElementById('v-payto').value;
+            const type = document.getElementById('v-type').value;
+            const category = document.getElementById('v-category').value;
+            const amount = parseFloat(document.getElementById('v-amount').value || 0);
+
+            if(!payTo || amount <= 0) {
+                triggerToast('Please provide valid details!', 'error');
+                return;
+            }
+
+            const newId = `VCH-${String(window.erpState.vouchers.length + 90).padStart(3, '0')}`;
+            window.erpState.vouchers.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                payTo, type, category, amount,
+                status: 'Pending Approval'
+            });
+
+            document.getElementById('voucher-modal').remove();
+            triggerToast('Voucher drafted for internal site approval.');
+            renderActiveModule();
+        }
+
+        // 6. ACCOUNTS - PETTY CASH & EXPENSES
+        function renderPettyCash(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openPettyCashModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">receipt_long</span> Add Pettycash Bill
+                </button>
+            `;
+
+            let tableRows = '';
+            let totalExpenses = 0;
+            window.erpState.pettyCash.forEach((p) => {
+                totalExpenses += p.amount;
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${p.id}</td>
+                        <td class="p-4 text-sm">${p.date}</td>
+                        <td class="p-4 text-sm font-medium">${p.detail}</td>
+                        <td class="p-4 text-xs font-semibold uppercase text-sky-600 dark:text-sky-400 bg-sky-50 dark:bg-sky-900/30 px-2 py-1 rounded inline-block mt-3">${p.category}</td>
+                        <td class="p-4 text-sm font-bold text-rose-500">₹ ${p.amount.toLocaleString('en-IN')}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Total Petty Cash Disbursed</div>
+                        <div class="text-2xl font-bold text-rose-500">₹ ${totalExpenses.toLocaleString('en-IN')}</div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Date</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Expense Description</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Category</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Amount Spent</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openPettyCashModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "petty-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Post Pettycash Site Expense</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Expense Detail / Particulars</label>
+                            <input id="pc-detail" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Local wire connectors purchase">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Category</label>
+                                <input id="pc-category" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Consumables">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Amount Paid (INR)</label>
+                                <input id="pc-amount" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 450">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('petty-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewPettyCash()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Record Expense</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewPettyCash() {
+            const detail = document.getElementById('pc-detail').value;
+            const category = document.getElementById('pc-category').value;
+            const amount = parseFloat(document.getElementById('pc-amount').value || 0);
+
+            if(!detail || amount <= 0) {
+                triggerToast('Please provide valid details!', 'error');
+                return;
+            }
+
+            const newId = `PC-${String(window.erpState.pettyCash.length + 401).padStart(3, '0')}`;
+            window.erpState.pettyCash.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                detail, category, amount
+            });
+
+            document.getElementById('petty-modal').remove();
+            triggerToast('Expense recorded successfully');
+            renderActiveModule();
+        }
+
+        // 7. ACCOUNTS - TAXES
+        function renderTax(container, actionContainer) {
+            const tax = window.erpState.taxes;
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                            <span class="material-icons text-emerald-500">add_circle</span> Output GST Collected
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-2">Total Output GST charged to client invoices so far this fiscal month.</p>
+                        <div class="text-3xl font-bold text-rose-500">₹ ${tax.outputTaxCollected.toLocaleString('en-IN')}</div>
+                    </div>
+                    
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                        <h3 class="font-bold text-slate-700 dark:text-slate-300 mb-4 flex items-center gap-2">
+                            <span class="material-icons text-sky-500">remove_circle</span> Input Tax Credit (ITC)
+                        </h3>
+                        <p class="text-xs text-slate-400 mb-2">GST eligible for credit offset based on vendor bill inward receipts.</p>
+                        <div class="text-3xl font-bold text-emerald-500">₹ ${tax.inputTaxCredit.toLocaleString('en-IN')}</div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm">
+                    <h3 class="text-lg font-bold mb-4">GST Reconciliation / Net Payables</h3>
+                    <div class="space-y-4 max-w-md">
+                        <div class="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+                            <span class="text-sm font-medium">Output GST (Liability)</span>
+                            <span class="text-sm font-bold text-rose-500">₹ ${tax.outputTaxCollected.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+                            <span class="text-sm font-medium">Input Tax Credit (Offset)</span>
+                            <span class="text-sm font-bold text-emerald-500">- ₹ ${tax.inputTaxCredit.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div class="flex justify-between items-center border-b pb-2 dark:border-slate-800">
+                            <span class="text-sm font-medium">TDS Deducted at Source</span>
+                            <span class="text-sm font-bold text-sky-500">- ₹ ${tax.tdsReceivable.toLocaleString('en-IN')}</span>
+                        </div>
+                        <div class="flex justify-between items-center pt-2">
+                            <span class="text-md font-bold">Estimated Net GST Payable</span>
+                            <span class="text-md font-extrabold text-primary dark:text-sky-400">₹ ${tax.netGstPayable.toLocaleString('en-IN')}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        // 8. ACCOUNTS - CREDIT & DEBIT BILLS
+        function renderCreditDebit(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openCreditDebitModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">balance</span> Adjust Account / Bill
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.bills.forEach((b) => {
+                const color = b.type === 'Debit Bill' ? 'text-rose-500' : 'text-emerald-500';
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${b.id}</td>
+                        <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded font-bold ${b.type === 'Debit Bill' ? 'bg-rose-50 text-rose-700 dark:bg-rose-950/20' : 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20'}">${b.type}</span></td>
+                        <td class="p-4 text-sm">${b.date}</td>
+                        <td class="p-4 text-sm font-medium">${b.entity}</td>
+                        <td class="p-4 text-sm text-slate-500">${b.reason}</td>
+                        <td class="p-4 text-sm font-bold ${color}">₹ ${b.amount.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-xs"><span class="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">${b.status}</span></td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Adjustment ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Adjustment Type</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Date</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Entity Involved</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Reason / Remarks</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Adjustment Value</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openCreditDebitModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "cd-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Post Debit / Credit Adjustment Note</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Adjustment Type</label>
+                            <select id="cd-type" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm">
+                                <option>Debit Bill</option>
+                                <option>Credit Bill</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Contra Entity Involved</label>
+                            <input id="cd-entity" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Vendor or Client name">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Reason / Adjustments Remarks</label>
+                            <input id="cd-reason" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Pipe return or Damage compensation">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Amount Note Value (INR)</label>
+                            <input id="cd-amount" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 5000">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('cd-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewCreditDebit()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Submit Adjustment</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewCreditDebit() {
+            const type = document.getElementById('cd-type').value;
+            const entity = document.getElementById('cd-entity').value;
+            const reason = document.getElementById('cd-reason').value;
+            const amount = parseFloat(document.getElementById('cd-amount').value || 0);
+
+            if(!entity || amount <= 0) {
+                triggerToast('Please provide valid details!', 'error');
+                return;
+            }
+
+            const newId = `BIL-${String(window.erpState.bills.length + 901).padStart(3, '0')}`;
+            window.erpState.bills.push({
+                id: newId,
+                type,
+                date: new Date().toISOString().split('T')[0],
+                entity, reason, amount,
+                status: 'Pending'
+            });
+
+            document.getElementById('cd-modal').remove();
+            triggerToast('Accounting adjustment recorded successfully');
+            renderActiveModule();
+        }
+
+        // 9. ACCOUNTS - STATEMENT OF ACCOUNT (SOA)
+        function renderSOA(container, actionContainer) {
+            const soa = window.erpState.soa;
+            let rows = '';
+            soa.transactions.forEach((tx) => {
+                rows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50 text-sm">
+                        <td class="p-4 text-xs text-slate-500">${tx.date}</td>
+                        <td class="p-4 font-medium">${tx.desc}</td>
+                        <td class="p-4 text-rose-500 font-medium">${tx.debit > 0 ? '₹ ' + tx.debit.toLocaleString('en-IN') : '-'}</td>
+                        <td class="p-4 text-emerald-500 font-medium">${tx.credit > 0 ? '₹ ' + tx.credit.toLocaleString('en-IN') : '-'}</td>
+                        <td class="p-4 font-bold">₹ ${tx.balance.toLocaleString('en-IN')}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm mb-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <div>
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Target Client Account</div>
+                            <div class="text-lg font-bold">${soa.clientName}</div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Net Outstanding Balance</div>
+                            <div class="text-2xl font-black text-rose-500">₹ ${soa.transactions[soa.transactions.length - 1].balance.toLocaleString('en-IN')}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Transaction Date</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Description / Voucher Link</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Debit (Invoice)</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Credit (Payments)</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Running Balance</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        // 10. OPERATIONS - BOM (DAILY UPDATES)
+        function renderBOM(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openBOMModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">playlist_add</span> Post BOM Estimate Item
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.bom.forEach((b, idx) => {
+                const consumedPercent = Math.min(100, Math.round((b.actual / b.estimate) * 100));
+                let barColor = 'bg-emerald-500';
+                if(consumedPercent > 90) barColor = 'bg-rose-500';
+                else if(consumedPercent > 70) barColor = 'bg-amber-500';
+
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${b.villa}</td>
+                        <td class="p-4 text-sm font-semibold">${b.work}</td>
+                        <td class="p-4 text-sm font-medium">${b.item}</td>
+                        <td class="p-4 text-sm font-bold text-slate-400">${b.estimate} ${b.unit}</td>
+                        <td class="p-4 text-sm font-bold text-primary dark:text-sky-400">${b.actual} ${b.unit}</td>
+                        <td class="p-4 w-1/4">
+                            <div class="flex items-center gap-2">
+                                <div class="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                                    <div class="h-full ${barColor}" style="width: ${consumedPercent}%"></div>
+                                </div>
+                                <span class="text-xs font-bold text-slate-500">${consumedPercent}%</span>
+                            </div>
+                        </td>
+                        <td class="p-4">
+                            <button onclick="quickUpdateActual(${idx})" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-2 py-1 rounded font-semibold">+ Add Qty</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Unit Reference (Villa/Workwise)</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Sub-Trade Work Phase</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Bill of Material Item Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">BOM Allowed Limit</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Actual Cumulative Utilization</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Capacity Exhausted %</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function quickUpdateActual(idx) {
+            const addQty = parseFloat(prompt('Enter quantity to add to actual consumed tracker:') || 0);
+            if(addQty > 0) {
+                window.erpState.bom[idx].actual += addQty;
+                triggerToast('Consumption ledger updated dynamically!');
+                renderActiveModule();
+            }
+        }
+
+        function openBOMModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "bom-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Post Bill Of Materials (BOM) Limit</h3>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Unit / Villa No.</label>
+                                <input id="bom-villa" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Villa-04">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Work Phase</label>
+                                <input id="bom-work" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Electrical Wiring">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Material Description Name</label>
+                            <input id="bom-item" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 2.5 sqmm FR Cable wires">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">BOM Est Quantity Limit</label>
+                                <input id="bom-est" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 500">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Unit of Measurement (UoM)</label>
+                                <input id="bom-unit" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" value="Rmt">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('bom-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewBOM()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Post To Operations</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewBOM() {
+            const villa = document.getElementById('bom-villa').value;
+            const work = document.getElementById('bom-work').value;
+            const item = document.getElementById('bom-item').value;
+            const estimate = parseFloat(document.getElementById('bom-est').value || 0);
+            const unit = document.getElementById('bom-unit').value;
+
+            if(!villa || !item || estimate <= 0) {
+                triggerToast('Please provide valid BOM input parameters!', 'error');
+                return;
+            }
+
+            window.erpState.bom.push({
+                villa, work, item, estimate, actual: 0, unit
+            });
+
+            document.getElementById('bom-modal').remove();
+            triggerToast('BOM limit setup successful');
+            renderActiveModule();
+        }
+
+        // 11. OPERATIONS - MP / MACHINERY USED
+        function renderMPUtilized(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openMPModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">query_builder</span> Daily Machine Hour Entry
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.mpUtilized.forEach((mp) => {
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${mp.id}</td>
+                        <td class="p-4 text-sm">${mp.date}</td>
+                        <td class="p-4 text-sm font-semibold">${mp.machine}</td>
+                        <td class="p-4 text-sm text-emerald-600 font-bold">${mp.runningHours} Hrs</td>
+                        <td class="p-4 text-sm text-amber-500 font-bold">${mp.idleHours} Hrs</td>
+                        <td class="p-4 text-xs text-slate-400">${mp.idleHours > 0 ? mp.reason : '-'}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Log Ref</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Date</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Machinery / Equipment Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Running Hours</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Idle Hours</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Idle Reason / Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openMPModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "mp-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Post Machine Running Hours Log</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Select Machinery/Tool</label>
+                            <input id="mp-machine" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Core Drilling Unit #3">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Running Duration (Hrs)</label>
+                                <input id="mp-running" type="number" step="0.5" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 5.5">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Idle Duration (Hrs)</label>
+                                <input id="mp-idle" type="number" step="0.5" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 2.5">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Idle Reason Remarks (If applicable)</label>
+                            <input id="mp-reason" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Standby for inspection">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('mp-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewMP()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Log Hours</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewMP() {
+            const machine = document.getElementById('mp-machine').value;
+            const runningHours = parseFloat(document.getElementById('mp-running').value || 0);
+            const idleHours = parseFloat(document.getElementById('mp-idle').value || 0);
+            const reason = document.getElementById('mp-reason').value;
+
+            if(!machine || (runningHours <= 0 && idleHours <= 0)) {
+                triggerToast('Please provide valid machine logging inputs!', 'error');
+                return;
+            }
+
+            const newId = `MP-${String(window.erpState.mpUtilized.length + 1).padStart(2, '0')}`;
+            window.erpState.mpUtilized.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                machine, runningHours, idleHours, reason
+            });
+
+            document.getElementById('mp-modal').remove();
+            triggerToast('Daily machinery running log saved successfully.');
+            renderActiveModule();
+        }
+
+        // 12. OPERATIONS - MATERIAL UTILIZED
+        function renderMaterialUtilized(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openMaterialUsedModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">playlist_add_check</span> Post Consumed Entry
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.materialUtilized.forEach((mu) => {
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${mu.id}</td>
+                        <td class="p-4 text-sm">${mu.date}</td>
+                        <td class="p-4 text-sm font-semibold">${mu.item}</td>
+                        <td class="p-4 text-sm font-bold text-primary dark:text-sky-400">${mu.qty} ${mu.unit}</td>
+                        <td class="p-4 text-sm text-slate-600 dark:text-slate-400">${mu.task}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Consumption Log Ref</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Date Issued</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Material Item Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Consumed Quantity</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Work Target / Task Context</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openMaterialUsedModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "mu-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Issue / Log Site Consumed Materials</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Material Name Description</label>
+                            <input id="mu-item" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 25mm Brass Elbow Couplers">
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Quantity Issued</label>
+                                <input id="mu-qty" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 15">
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold mb-1">Unit (UoM)</label>
+                                <input id="mu-unit" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" value="Nos">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Target Task / Villa Reference</label>
+                            <input id="mu-task" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Villa No 2 Bathroom Core Plumbing">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('mu-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewMU()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Save Consumed Entry</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewMU() {
+            const item = document.getElementById('mu-item').value;
+            const qty = parseFloat(document.getElementById('mu-qty').value || 0);
+            const unit = document.getElementById('mu-unit').value;
+            const task = document.getElementById('mu-task').value;
+
+            if(!item || qty <= 0 || !task) {
+                triggerToast('Please provide valid material consumption parameters!', 'error');
+                return;
+            }
+
+            const newId = `MU-${String(window.erpState.materialUtilized.length + 901).padStart(3, '0')}`;
+            window.erpState.materialUtilized.push({
+                id: newId,
+                date: new Date().toISOString().split('T')[0],
+                item, qty, unit, task
+            });
+
+            document.getElementById('mu-modal').remove();
+            triggerToast('Daily material utilization posted to project BOM balance sheet.');
+            renderActiveModule();
+        }
+
+        // 13. OPERATIONS - PROGRESS CHART (BOM VS CONSUMPTION PERIODS)
+        function renderProgressChart(container, actionContainer) {
+            const filter = window.erpState.progressFilter;
+            actionContainer.innerHTML = `
+                <div class="inline-flex rounded-md shadow-sm" role="group">
+                    <button onclick="changeProgressFilter('Day')" class="px-4 py-2 text-xs font-semibold ${filter === 'Day' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'} rounded-l-md">
+                        Day Progress
+                    </button>
+                    <button onclick="changeProgressFilter('Week')" class="px-4 py-2 text-xs font-semibold ${filter === 'Week' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border-t border-b border-slate-200 dark:border-slate-800 hover:bg-slate-50'}">
+                        Weekly Run
+                    </button>
+                    <button onclick="changeProgressFilter('Month')" class="px-4 py-2 text-xs font-semibold ${filter === 'Month' ? 'bg-primary text-white' : 'bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-800 hover:bg-slate-50'} rounded-r-md">
+                        Monthly View
+                    </button>
+                </div>
+            `;
+
+            // Calculate overall efficiency
+            let totalBOM = 0;
+            let totalActual = 0;
+            window.erpState.bom.forEach(b => {
+                totalBOM += b.estimate;
+                totalActual += b.actual;
+            });
+            const netProgressPercent = Math.min(100, Math.round((totalActual / totalBOM) * 100));
+
+            // Setup mock data metrics based on filter
+            let factor = filter === 'Day' ? 1.0 : filter === 'Week' ? 7.2 : 30.5;
+            let totalConduits = Math.round(1300 * factor);
+            let consumedConduits = Math.round(1250 * factor);
+            let conduitsPercentage = Math.round((consumedConduits/totalConduits) * 100);
+
+            let totalPipes = Math.round(900 * factor);
+            let consumedPipes = Math.round(870 * factor);
+            let pipesPercentage = Math.round((consumedPipes/totalPipes) * 100);
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Selected Period Duration</div>
+                        <div class="text-2xl font-bold text-primary dark:text-sky-400">${filter === 'Day' ? 'Today (Daily Track)' : filter === 'Week' ? 'Last 7 Days (Weekly Run)' : 'Current Billing Month'}</div>
+                    </div>
+                    <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-5 shadow-sm">
+                        <div class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-1">Combined BOM Target Burn-Rate</div>
+                        <div class="text-2xl font-bold text-slate-800 dark:text-slate-100">${netProgressPercent}% Capacity Exhausted</div>
+                    </div>
+                </div>
+
+                <!-- Custom High-Contrast CSS Visual bar chart instead of massive JS chart engines for ultimate compatibility -->
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 shadow-sm space-y-6">
+                    <h3 class="text-lg font-bold mb-4">Material Target Consumption Comparison Chart</h3>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="font-bold">25mm PVC Conduit Cable Lines</span>
+                            <span class="text-slate-500 font-medium">BOM Allocated: ${totalConduits} Rmt | Consumed: <b class="text-primary dark:text-sky-400">${consumedConduits} Rmt</b> (${conduitsPercentage}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-lg overflow-hidden relative flex items-center">
+                            <div class="h-full bg-primary/20 dark:bg-sky-400/20" style="width: 100%; position:absolute; left:0;"></div>
+                            <div class="h-full bg-primary" style="width: ${conduitsPercentage}%; position:absolute; left:0; z-index:1;"></div>
+                            <span class="text-xs text-white dark:text-slate-900 font-extrabold px-3 z-10 select-none">Actual Consumption Run Line</span>
+                        </div>
+                    </div>
+
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-sm">
+                            <span class="font-bold">1-inch CPVC Sanitary Fittings Pipe</span>
+                            <span class="text-slate-500 font-medium">BOM Allocated: ${totalPipes} Rmt | Consumed: <b class="text-emerald-500">${consumedPipes} Rmt</b> (${pipesPercentage}%)</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-800 h-6 rounded-lg overflow-hidden relative flex items-center">
+                            <div class="h-full bg-emerald-500/20" style="width: 100%; position:absolute; left:0;"></div>
+                            <div class="h-full bg-emerald-500" style="width: ${pipesPercentage}%; position:absolute; left:0; z-index:1;"></div>
+                            <span class="text-xs text-white dark:text-slate-900 font-extrabold px-3 z-10 select-none">Actual Consumption Run Line</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function changeProgressFilter(filter) {
+            window.erpState.progressFilter = filter;
+            renderActiveModule();
+        }
+
+        // 14. HR & PAYROLL - EMPLOYEES MASTER
+        function renderEmployees(container, actionContainer) {
+            actionContainer.innerHTML = `
+                <button onclick="openEmployeeModal()" class="bg-primary hover:bg-primary-hover text-white px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-1">
+                    <span class="material-icons text-sm">person_add</span> Register Employee / Trade Skill
+                </button>
+            `;
+
+            let tableRows = '';
+            window.erpState.employees.forEach((emp) => {
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${emp.id}</td>
+                        <td class="p-4 text-sm font-bold text-slate-800 dark:text-slate-100">${emp.name}</td>
+                        <td class="p-4 text-sm font-medium uppercase text-slate-600 dark:text-slate-300">${emp.role}</td>
+                        <td class="p-4 text-sm font-bold text-emerald-600">₹ ${emp.rate.toLocaleString('en-IN')} / Daily Shift</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Employee ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Employee Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Skill Designation / Trade</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Standard Daily Rate (INR)</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function openEmployeeModal() {
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "emp-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-md shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4">Register Onsite Worker / Staff</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Employee Name</label>
+                            <input id="emp-name" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Balasubramanian S.">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Skill Designation / Trade</label>
+                            <input id="emp-role" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., Plumber Helper">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold mb-1">Daily Wages Rate (INR)</label>
+                            <input id="emp-rate" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border dark:border-slate-700 rounded-lg p-2 text-sm" placeholder="e.g., 600">
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('emp-modal').remove()" class="px-4 py-2 text-sm border dark:border-slate-700 rounded-lg">Cancel</button>
+                        <button onclick="submitNewEmployee()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg">Register Staff</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        function submitNewEmployee() {
+            const name = document.getElementById('emp-name').value;
+            const role = document.getElementById('emp-role').value;
+            const rate = parseFloat(document.getElementById('emp-rate').value || 0);
+
+            if(!name || !role || rate <= 0) {
+                triggerToast('Please provide valid worker parameters!', 'error');
+                return;
+            }
+
+            const newId = `EMP-${String(window.erpState.employees.length + 1).padStart(3, '0')}`;
+            window.erpState.employees.push({
+                id: newId, name, role, rate
+            });
+
+            document.getElementById('emp-modal').remove();
+            triggerToast('New Employee added to onsite system payroll master.');
+            renderActiveModule();
+        }
+
+        // 15. HR & PAYROLL - DAILY ATTENDANCE
+        function renderAttendance(container, actionContainer) {
+            const date = window.erpState.currentAttendanceDate;
+            actionContainer.innerHTML = `
+                <div class="flex items-center gap-2">
+                    <label class="text-xs font-bold text-slate-400">Current Date Context:</label>
+                    <input type="date" value="${date}" onchange="changeAttendanceDate(this.value)" class="bg-white dark:bg-slate-950 border dark:border-slate-800 text-sm font-semibold p-1.5 rounded-lg">
+                </div>
+            `;
+
+            // Pull status array
+            const dailyAttendanceObj = window.erpState.attendance[date] || {};
+
+            let rosterRows = '';
+            window.erpState.employees.forEach((emp) => {
+                const isPresent = dailyAttendanceObj[emp.id] !== undefined ? dailyAttendanceObj[emp.id] : false;
+                rosterRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${emp.id}</td>
+                        <td class="p-4 text-sm font-semibold">${emp.name}</td>
+                        <td class="p-4 text-xs font-medium uppercase text-slate-400">${emp.role}</td>
+                        <td class="p-4">
+                            <label class="relative inline-flex items-center cursor-pointer select-none">
+                                <input type="checkbox" ${isPresent ? 'checked' : ''} onchange="toggleAttendanceCheckbox('${emp.id}')" class="sr-only peer">
+                                <div class="w-11 h-6 bg-slate-200 dark:bg-slate-800 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:width-5 after:transition-all peer-checked:bg-emerald-500"></div>
+                                <span class="ml-3 text-xs font-bold ${isPresent ? 'text-emerald-500' : 'text-rose-500'}">${isPresent ? 'PRESENT' : 'ABSENT'}</span>
+                            </label>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Worker ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Onsite Worker Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Primary Trade Skill</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Marker Switch (Click to Check-In)</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rosterRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function changeAttendanceDate(val) {
+            window.erpState.currentAttendanceDate = val;
+            if(!window.erpState.attendance[val]) {
+                // Initialize clean attendance mapping
+                window.erpState.attendance[val] = {};
+            }
+            renderActiveModule();
+        }
+
+        function toggleAttendanceCheckbox(empId) {
+            const date = window.erpState.currentAttendanceDate;
+            if(!window.erpState.attendance[date]) {
+                window.erpState.attendance[date] = {};
+            }
+            const current = window.erpState.attendance[date][empId];
+            window.erpState.attendance[date][empId] = !current;
+            triggerToast(`Attendance updated for selected day context.`);
+            renderActiveModule();
+        }
+
+        // 16. HR & PAYROLL - SITE PAYROLL CALCULATIONS
+        function renderPayroll(container, actionContainer) {
+            // Aggregate attendance days per employee for the last month mock run
+            let tableRows = '';
+            window.erpState.employees.forEach((emp) => {
+                // Mock calculation helper
+                let shiftsWorked = 18; // base monthly mock run shifts
+                let netPayable = emp.rate * shiftsWorked;
+                tableRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-semibold text-xs text-slate-500">${emp.id}</td>
+                        <td class="p-4 text-sm font-bold text-slate-800 dark:text-slate-100">${emp.name}</td>
+                        <td class="p-4 text-sm font-semibold uppercase text-slate-400">${emp.role}</td>
+                        <td class="p-4 text-sm font-bold">₹ ${emp.rate.toLocaleString('en-IN')}</td>
+                        <td class="p-4 text-sm font-medium text-emerald-500">${shiftsWorked} Shifts Completed</td>
+                        <td class="p-4 text-sm font-bold text-primary dark:text-sky-400">₹ ${netPayable.toLocaleString('en-IN')}</td>
+                        <td class="p-4">
+                            <button onclick="simulatePaySlips('${emp.name}', ${emp.rate}, ${shiftsWorked})" class="text-xs font-bold text-primary dark:text-sky-400 border border-primary/20 hover:border-primary px-3 py-1.5 rounded-lg">View Payslip</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Worker ID</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Employee Name</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Trade Skill</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Wages Shift Rate</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Active Total Shifts</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Net Salary Payables</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Simulations</th>
+                            </tr>
+                        </thead>
+                        <tbody>${tableRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function simulatePaySlips(name, rate, shifts) {
+            const val = rate * shifts;
+            const overlay = document.createElement('div');
+            overlay.className = "fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4";
+            overlay.id = "payslip-modal";
+            overlay.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl p-6 w-full max-w-sm shadow-2xl">
+                    <h3 class="text-lg font-bold mb-4 flex items-center gap-2"><span class="material-icons text-primary">monetization_on</span> Worker Shift Payslip</h3>
+                    <div class="space-y-3 text-sm">
+                        <div class="flex justify-between border-b pb-2 dark:border-slate-800">
+                            <span class="text-slate-400 font-medium">Worker Name:</span>
+                            <span class="font-bold">${name}</span>
+                        </div>
+                        <div class="flex justify-between border-b pb-2 dark:border-slate-800">
+                            <span class="text-slate-400 font-medium">Shift Wage Rate:</span>
+                            <span class="font-bold">₹ ${rate} / day</span>
+                        </div>
+                        <div class="flex justify-between border-b pb-2 dark:border-slate-800">
+                            <span class="text-slate-400 font-medium">Shifts Settled:</span>
+                            <span class="font-bold">${shifts} Shifts</span>
+                        </div>
+                        <div class="flex justify-between pt-2">
+                            <span class="font-bold">Net Salary Payable:</span>
+                            <span class="font-black text-rose-500 text-lg">₹ ${val.toLocaleString('en-IN')}</span>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-2 mt-6">
+                        <button onclick="document.getElementById('payslip-modal').remove()" class="bg-primary text-white px-4 py-2 text-sm font-semibold rounded-lg w-full">Close Payslip Window</button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+        }
+
+        // 17. ADMIN SYSTEM - STAFF ACCESS FLOW MATRIX
+        function renderStaffAccess(container, actionContainer) {
+            let roleRows = '';
+            Object.keys(window.erpState.accessFlow).forEach((role) => {
+                const rules = window.erpState.accessFlow[role];
+                roleRows += `
+                    <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50/50">
+                        <td class="p-4 font-bold text-sm text-slate-800 dark:text-slate-200">${role}</td>
+                        <td class="p-4 text-center">
+                            <span class="material-icons text-lg ${rules.sales ? 'text-emerald-500' : 'text-rose-500'}">
+                                ${rules.sales ? 'verified' : 'cancel'}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="material-icons text-lg ${rules.accounts ? 'text-emerald-500' : 'text-rose-500'}">
+                                ${rules.accounts ? 'verified' : 'cancel'}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="material-icons text-lg ${rules.operations ? 'text-emerald-500' : 'text-rose-500'}">
+                                ${rules.operations ? 'verified' : 'cancel'}
+                            </span>
+                        </td>
+                        <td class="p-4 text-center">
+                            <span class="material-icons text-lg ${rules.hr ? 'text-emerald-500' : 'text-rose-500'}">
+                                ${rules.hr ? 'verified' : 'cancel'}
+                            </span>
+                        </td>
+                        <td class="p-4">
+                            <button onclick="toggleStaffModuleRules('${role}')" class="text-xs bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 px-3 py-1.5 rounded-lg font-semibold">Alter Permissions</button>
+                        </td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-sm">
+                    <table class="w-full text-left border-collapse">
+                        <thead>
+                            <tr class="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-200 dark:border-slate-800">
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Staff Role Profile</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase text-center">Sales Access</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase text-center">Accounts Access</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase text-center">Operations Access</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase text-center">HR & Payroll Access</th>
+                                <th class="p-4 text-xs font-bold text-slate-400 uppercase">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>${roleRows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        function toggleStaffModuleRules(role) {
+            // Prompt matrix rules toggler
+            const mod = prompt(`Toggle access parameters: Enter 'Sales', 'Accounts', 'Operations', or 'HR' to invert role rights for ${role}:`);
+            if(mod) {
+                const key = mod.trim().toLowerCase();
+                if(key === 'sales' || key === 'accounts' || key === 'operations' || key === 'hr') {
+                    const current = window.erpState.accessFlow[role][key];
+                    window.erpState.accessFlow[role][key] = !current;
+                    triggerToast(`Role access settings updated for ${role}.`);
+                    renderActiveModule();
+                } else {
+                    triggerToast('Invalid department key requested!', 'error');
+                }
+            }
+        }
+
+        // --- MASTER SYSTEM INITIALIZER ON WINDOW LOAD ---
+        window.onload = function () {
+            // Render default view Enquiries
+            changeActiveModule('Sales', 'Enquiries');
+        }
+    </script>
+</body>
+</html>
